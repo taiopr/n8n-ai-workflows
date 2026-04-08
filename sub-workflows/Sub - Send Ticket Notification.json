@@ -1,0 +1,103 @@
+{
+  "name": "Sub - Send Ticket Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/YOUR_WEBHOOK_URL_HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.category === 'briefing' ? '🌤️ *Daily Briefing*' : '🎫 *New Support Ticket*' }}\\n*{{ $json.category === 'briefing' ? $json.date : 'Category: ' + $json.category }}*\\n\\n{{ $json['Describe your issue'] }}\\n\\n_From: {{ $json['Full Name'] }}_\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "98ed513e-1af5-4b10-a415-05e2a554bbfd",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d0d6e5da-f1bf-49cd-a6e1-57acdbc14b84",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "content": "## Trigger when executed by another workflow\nThis triggers when another workflow executes this workflow.",
+        "height": 176
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -112,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "a49c7b6d-b291-4897-928e-103e9a2d70ea",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Send Slack notification\nThis node sends Slack a notification when Workflow 3 or 4 are executed"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        176,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "2afb65b2-da7e-4132-91e3-cf6bfadea229",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## What this Workflow does\nFor Workflow 3 (Ticket Triage):\nReceives the classified ticket data and posts a formatted Slack message with the ticket category, the submitter's name, email, and issue description. Acts as the centralised notification handler so all three routing branches (billing, technical, general) don't each need their own Slack node.\n\nFor Workflow 4 (Daily Briefing):\nReceives the LLM-generated weather briefing and posts it to Slack. The same notification infrastructure used for tickets handles the briefing — the category field switches the message format between ticket and briefing style.\n\nThe point of reusing it:\nOne sub-workflow, two parent workflows, one place to maintain. If you change the Slack channel or message format, you update it once and both workflows get the change automatically.",
+        "height": 320,
+        "width": 608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -144,
+        176
+      ],
+      "typeVersion": 1,
+      "id": "9df75a1b-eda9-4f7d-870e-a769cb42aef1",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "641db97a-d688-4ca7-8108-30db26e3899b",
+  "meta": {
+    "instanceId": "19d6f1ac9af5149fbd7880bae792196282049205837213f9c167ce58a1f02f7d"
+  },
+  "id": "CBCkDDVUeZXcTpu3",
+  "tags": []
+}

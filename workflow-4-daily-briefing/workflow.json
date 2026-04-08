@@ -1,0 +1,295 @@
+{
+  "name": "Workflow 4 - Daily Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f1fa158a-4a4c-4a7c-ab92-2d83cd353be1",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=41.39&longitude=2.15&current_weather=true&hourly=temperature_2m,precipitation_probability&forecast_days=1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c01ea2d0-534b-4ba0-a59c-32b86483b88b",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a helpful morning assistant. Write a short, friendly daily briefing for Barcelona in 2-3 sentences based on this weather data:\n\nDate: {{ $json.date }}\nConditions: {{ $json.description }}\nTemperature: {{ $json.temperature }}°C\nWind speed: {{ $json.windspeed }} km/h\nChance of rain: {{ $json.precip_probability }}%\n\nKeep it conversational and practical. Mention if they should bring a jacket or umbrella."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "e50c27da-dcc7-4473-a682-abacbdb941ec",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "KyjhJa5yUZCmhZYc",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CBCkDDVUeZXcTpu3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/CBCkDDVUeZXcTpu3",
+          "cachedResultName": "Sub - Send Ticket Notification"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "843fc37c-a080-4b51-90fd-6cd99921108d",
+      "name": "Call 'Sub - Send Ticket Notification'"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const weather = item.json.current_weather;\n  const precipProb = item.json.hourly?.precipitation_probability?.[0] ?? 0;\n\n  // Weather code to human readable\n  const weatherDescriptions = {\n    0: 'clear sky',\n    1: 'mainly clear',\n    2: 'partly cloudy',\n    3: 'overcast',\n    45: 'foggy',\n    48: 'foggy',\n    51: 'light drizzle',\n    61: 'light rain',\n    63: 'moderate rain',\n    65: 'heavy rain',\n    80: 'rain showers',\n    95: 'thunderstorm'\n  };\n\n  const description = weatherDescriptions[weather.weathercode] || 'mixed conditions';\n\n  return {\n    json: {\n      temperature: weather.temperature,\n      windspeed: weather.windspeed,\n      weathercode: weather.weathercode,\n      description: description,\n      precip_probability: precipProb,\n      date: new Date().toLocaleDateString('en-GB', {\n        weekday: 'long',\n        year: 'numeric',\n        month: 'long',\n        day: 'numeric'\n      })\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "747bd92c-b760-46e2-aa2a-5c4c076b5416",
+      "name": "Extract Weather Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const briefing = item.json.output[0].content[0].text || '';\n  const weatherData = $('Extract Weather Data').first().json;\n\n  return {\n    json: {\n      // Match the field names the sub-workflow uses\n      'Full Name': 'Daily Briefing Bot',\n      'Email': 'bot@n8n-workflows.local',\n      'Describe your issue': briefing,\n      category: 'briefing',\n      temperature: weatherData.temperature,\n      date: weatherData.date\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        0
+      ],
+      "id": "80a9c85e-eb88-48a7-8e52-ab66b9749306",
+      "name": "Format for Sub Workflow"
+    },
+    {
+      "parameters": {
+        "content": "## Daily trigger\nTrigger that activates the full workflow everyday at 8 am",
+        "height": 96
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -96,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "6fac7510-b35e-4f84-86c9-e4c62abb430d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Weather API\nGet the weather information of your location",
+        "height": 112,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        160,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "e5b6fecb-59ab-4214-9952-af0ff64e3d26",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Extract Weather Data\nThe API returns a numeric code, not a description. The code translates it into something the LLM can use in a natural sentence. Normalise API data before passing it to an LLM.",
+        "height": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "f99801aa-783d-4550-80d2-f680ad5129b4",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## LLM\nTakes the data and generates a short human-readable briefing, giving a natural 2-3 sentence briefing.",
+        "height": 144
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        624,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "5aa2b232-4a70-4e2a-b7f8-9d5d9d9f72dd",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Format for Sub Workflow\nPrepare the data in the shape the sub-workflow expects",
+        "height": 144
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        896,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "6a362e04-17cf-4ecc-96ed-66b299dd20d9",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Call the Sub-Workflow\nUse an Execute a sub workflow to call the Sub Workflow",
+        "height": 128
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1168,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "eaf8cb1b-3b02-4497-a33a-229052f15240",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## What this Workflow does\nA daily briefing orkflow. Every morning at a set time, it fetches the current weather for Barcelona, sends the data to an LLM to generate a short human-readable briefing, then posts it to Slack via the existing sub-workflow.",
+        "height": 176,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        544,
+        192
+      ],
+      "typeVersion": 1,
+      "id": "f87d94d1-82ee-4ee6-90ac-5e1e2aeaa304",
+      "name": "Sticky Note6"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Weather Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Format for Sub Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Weather Data": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Sub Workflow": {
+      "main": [
+        [
+          {
+            "node": "Call 'Sub - Send Ticket Notification'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3f6afbd5-acda-431c-8c38-c7938cc10bcb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19d6f1ac9af5149fbd7880bae792196282049205837213f9c167ce58a1f02f7d"
+  },
+  "id": "wiWtVMZlpcKYdtzp",
+  "tags": []
+}

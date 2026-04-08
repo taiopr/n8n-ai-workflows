@@ -1,0 +1,350 @@
+{
+  "name": "Workflow 2 - File Summariser",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1vl-gdXqrkysUm8nBac-zSgDnhrm2TqhG",
+          "mode": "list",
+          "cachedResultName": "Inbox",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1vl-gdXqrkysUm8nBac-zSgDnhrm2TqhG"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -240
+      ],
+      "id": "b9b04919-0768-408a-aa04-8d50189dc637",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "0q0j49YapuVY7wKd",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1024,
+        -240
+      ],
+      "id": "b46af7f1-a76b-4d7c-807a-6cc4fa21b0c5",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "0q0j49YapuVY7wKd",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1232,
+        -240
+      ],
+      "id": "b9f87765-3735-4dfa-b18b-3b0e4a661fb4",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Summarise the following text in 3-5 sentences. Be concise and factual. {{ $json.data }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        -240
+      ],
+      "id": "d8b3e180-b292-44e5-b039-c0c4eff6e4a2",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "KyjhJa5yUZCmhZYc",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  if (item.json.error) {\n    return {\n      json: {\n        file_content: `ERROR: LLM call failed.\\nReason: ${item.json.error.message}\\nTimestamp: ${new Date().toISOString()}`,\n        output_filename: `error_${Date.now()}.txt`\n      }\n    };\n  }\n\n  const summary = item.json.output[0].content[0].text || '';\n  const timestamp = new Date().toISOString();\n  const outputFilename = `summary_${Date.now()}.txt`;\n\n  const fileContent = `SUMMARY\nGenerated: ${timestamp}\n\n${summary}\n`;\n\n  return {\n    json: {\n      file_content: fileContent,\n      output_filename: outputFilename\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -240
+      ],
+      "id": "276f199c-82bf-4d07-b7d1-cba9ebf6c267",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.output_filename }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1CAJr4b9w_XCjfJMR-IAQp90dix3PVR8Q",
+          "mode": "list",
+          "cachedResultName": "summaries",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1CAJr4b9w_XCjfJMR-IAQp90dix3PVR8Q"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2096,
+        -240
+      ],
+      "id": "0157f4b1-5d60-4547-b77c-abfe35c7390e",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "0q0j49YapuVY7wKd",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "=file_content",
+        "options": {
+          "fileName": "={{ $json.output_filename }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1952,
+        -240
+      ],
+      "id": "db5c74e3-142a-4725-baa9-9a16883fb963",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "content": "## File In\n\nA file dropped in a Google Drive Folder called \"inbox\" gets downloaded (need to set it up in google drive, add a .txt with something inside of it.",
+        "height": 128,
+        "width": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        768,
+        -448
+      ],
+      "typeVersion": 1,
+      "id": "2a45f18f-a58d-4ea1-9793-a5d2eba28181",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Summary Out\n\nAfter the file is summarised by an LLM and converted to a file, it gets uploades in another Google Drive Folder called \"summaries\".",
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2016,
+        -464
+      ],
+      "typeVersion": 1,
+      "id": "a67541f8-dcce-47a5-b977-7e4d88875b3a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Extract from File\n\nExtract the information from the file. Using an Extract from File node instead of a Code node because n8n Cloud's filesystem-v2 blocks direct binary access in Code nodes, so use Extract from File instead.",
+        "height": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1168,
+        -448
+      ],
+      "typeVersion": 1,
+      "id": "fd1fab88-70bf-4279-b2d3-034a02871c64",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Summarize with LLM\n\nTake the extracted information from the .txt and summarise it.",
+        "height": 128
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1440,
+        -448
+      ],
+      "typeVersion": 1,
+      "id": "71dc4b80-dc02-4f48-8c2f-f4b00e56ee5e",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Code node\nIt's the transformation layer between the raw LLM response and the file that gets written to Drive.\n1. Catches LLM failures. If the LLM node errores, it writes an error report instead of crashing the pipeline (this error .txt gets then uploaded in Drive.\n2. Extracts the summary text from the LLM response.\n3. Builds the output. Formats the summary with a timestamp header and generates a unique filename.",
+        "height": 336,
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1712,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "9b7eac38-1ed1-4281-9b1f-f8448c664cbb",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## What this Workflow does\n\n- It's a fully automated file processing pipeline. File in, summary out, no manual steps.\n- Two layers of error handling that do different jobs. Soft failure writes an error file uploaded to Drive, hard crash alerts you on Discord using another workflow called Error Handler.\n- Proper credentials management with no hardcoded keys anywhere. ",
+        "height": 224,
+        "width": 416
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1344,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "a4260594-6d46-4a84-b82f-b6ec9dda4369",
+      "name": "Sticky Note5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "x49xCJQ6n0pDyEHd"
+  },
+  "versionId": "70ead2eb-1226-48bb-b62d-d21a709552a0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19d6f1ac9af5149fbd7880bae792196282049205837213f9c167ce58a1f02f7d"
+  },
+  "id": "OPMakWeLNhDEjtE8",
+  "tags": []
+}

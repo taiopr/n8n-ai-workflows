@@ -1,0 +1,473 @@
+{
+  "name": "Workflow 3 - Ticket Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Support Request",
+        "formDescription": "Tell us about your issue",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Describe your issue",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "b282af45-13cf-426c-b71b-9b0ac7ba39fd",
+      "name": "On form submission",
+      "webhookId": "e8395f89-89dc-4b15-a2bb-bbd7da61b95e"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a support ticket classifier. Classify the following support request into exactly one of these three categories: billing, technical, general.\n\nRespond with only the category word in lowercase. Nothing else. No punctuation, no explanation.\n\nSupport request:\n{{ $json['Describe your issue'] }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        0
+      ],
+      "id": "897fa599-136c-4b81-a8a6-cc811aa88b72",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "KyjhJa5yUZCmhZYc",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const raw = item.json.output[0].content[0].text || '';\n  const category = raw.trim().toLowerCase().replace(/[^a-z]/g, '');\n  const validCategories = ['billing', 'technical', 'general'];\n  const finalCategory = validCategories.includes(category) ? category : 'general';\n\n  // Explicitly pull form fields from the Form Trigger node\n  const formData = $('On form submission').first().json;\n\n  return {\n    json: {\n      category: finalCategory,\n      raw_classification: raw,\n      'Full Name': formData['Full Name'],\n      'Email': formData['Email'],\n      'Describe your issue': formData['Describe your issue']\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ],
+      "id": "7b2b5c15-684a-4d12-8cd7-6e731e1e4da5",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "billing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f7bdbbcc-541c-4f6c-a196-6fcdab7c715c"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "953b6d23-c04b-45c4-92c6-091c26b1291c",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "technical",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6237f669-5d69-4d5a-873a-d3057d939ccd",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "general",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 2
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        736,
+        -16
+      ],
+      "id": "30ceac77-8f05-4ca8-906e-0d9e88e4ca83",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CBCkDDVUeZXcTpu3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/CBCkDDVUeZXcTpu3",
+          "cachedResultName": "Sub - Send Ticket Notification"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        -208
+      ],
+      "id": "ab67dd27-68ad-4d0b-bc64-4aa1d79a94e7",
+      "name": "Call 'Sub - Send Ticket Notification'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CBCkDDVUeZXcTpu3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/CBCkDDVUeZXcTpu3",
+          "cachedResultName": "Sub - Send Ticket Notification"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        16
+      ],
+      "id": "8a1d15d9-3ca1-428f-be3f-e3ac1409a336",
+      "name": "Call 'Sub - Send Ticket Notification'1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CBCkDDVUeZXcTpu3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/CBCkDDVUeZXcTpu3",
+          "cachedResultName": "Sub - Send Ticket Notification"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        240
+      ],
+      "id": "54fd0954-6226-4f87-97e7-06f745e61d7c",
+      "name": "Call 'Sub - Send Ticket Notification'2"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "showText",
+        "responseText": "=Thank you {{ $('On form submission').first().json['Full Name'] }}. Your request has been received and classified as: {{ $json.category }}. We'll be in touch at {{ $('On form submission').first().json['Email'] }}."
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1392,
+        16
+      ],
+      "id": "e8d1b206-0c7b-4455-93b5-5d23887c9af1",
+      "name": "Form",
+      "webhookId": "4b4705da-78a2-47b4-b69b-7ba0483fff68"
+    },
+    {
+      "parameters": {
+        "content": "## What this Workflow does\n- A user fills out a support form. An LLM reads the issue description and classifies it into one of three categories: billing, technical, or general. The workflow automatically routes the ticket to the correct branch, notifies the team on Slack via a sub-workflow, and returns a confirmation message to the user. No manual trigger needed.",
+        "height": 176,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        416,
+        256
+      ],
+      "typeVersion": 1,
+      "id": "fae2e8ad-8c4c-4f28-875d-242ff6a4b757",
+      "name": "Sticky Note",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Entry point\nPresents a form to the user with three fields: Full Name, Email, and issue description. Fires the workflow when submitted."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -144,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "fdac4ce7-5535-4ca6-a546-a515c168664b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Message a model\nSends the issue description to OpenAI with a strict classification prompt. Returns exactly one word: billing, technical, or general."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        144,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "42454997-c61c-4ade-b533-07586b0cda9a",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Code node\nCleans and validates the LLM output - strips whitespace, lowercases, removes punctuation. Defaults to \"general\" if the LLM returns something unexpected. Also explicitly pulls the form fields forward so all downstream nodes have access to them.",
+        "height": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        432,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "7d30369e-5c4f-44c7-ad78-bec62514786e",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Switch\nRoutes the item down one of three branches based on the category field. Output 0 = billing, Output 1 = technical, Output 2 = general."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        704,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "2da56462-e74d-4717-b00d-f5792b2faad5",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Call 'Sub-Send Ticket Notification' (x3)\nCalls the sub-workflow from each branch, passing all ticket data. The sub-workflow handles the Slack notification, keeping the logic centralised and reusable.",
+        "height": 176,
+        "width": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1008,
+        -400
+      ],
+      "typeVersion": 1,
+      "id": "7299ad88-033c-4144-97de-d331203c67f8",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Form Response\nSends a confirmation message back to the user on the form page once the workflow completes."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1360,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "572f281f-4a6b-4abd-bdaa-ee44b7e7e16c",
+      "name": "Sticky Note6"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Call 'Sub - Send Ticket Notification'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Sub - Send Ticket Notification'1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Sub - Send Ticket Notification'2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Sub - Send Ticket Notification'": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Sub - Send Ticket Notification'1": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Sub - Send Ticket Notification'2": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e22e4868-9249-42b9-8dc4-18e2242f1372",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19d6f1ac9af5149fbd7880bae792196282049205837213f9c167ce58a1f02f7d"
+  },
+  "id": "1bu22BKxBSdyXpYJ",
+  "tags": []
+}
