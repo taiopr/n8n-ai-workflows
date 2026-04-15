@@ -24,15 +24,6 @@ Runs every morning at 8am. Fetches live weather data, generates a human-readable
 **Patterns:** Scheduled trigger, external API, LLM generation, sub-workflow reuse
 [View workflow →](./workflow-4-daily-briefing/)
 
-### Workflow 5 — Compound Image Generation Pipeline
-The flagship project. n8n webhook → FastAPI → ComfyUI → Slack.
-Fully automated image generation with error handling, reliability
-testing, and direct Slack image upload.
-**Patterns:** Webhook trigger, Python microservice, ComfyUI API,
-callback pattern, non-blocking background tasks
-[View workflow →](./workflow-5-image-generator/)
-[Full case study →](./workflow-5-image-generator/CASE_STUDY.md)
-
 ## Sub-workflows
 
 ### Send Ticket Notification
