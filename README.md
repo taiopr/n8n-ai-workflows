@@ -31,7 +31,6 @@ testing, and direct Slack image upload.
 **Patterns:** Webhook trigger, Python microservice, ComfyUI API,
 callback pattern, non-blocking background tasks
 [View workflow →](./workflow-5-image-generator/)
-[Full case study →](./workflow-5-image-generator/CASE_STUDY.md)
 
 ## Sub-workflows
 

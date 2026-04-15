@@ -18,36 +18,26 @@ step after the initial trigger.
 
 ## Architecture
 
-┌─────────────────────────────────────────────────────┐
-│                    TRIGGER LAYER                    │
-│                                                     │
-│   HTTP POST {prompt} → n8n Webhook                  │
-│                  ↓                                  │
-│   n8n HTTP Request → FastAPI /generate              │
-└─────────────────────────────────────────────────────┘
-↓
-┌─────────────────────────────────────────────────────┐
-│                  GENERATION LAYER                   │
-│                                                     │
-│   FastAPI receives request                          │
-│   └→ Validates with Pydantic                        │
-│   └→ Returns job_id immediately (non-blocking)      │
-│   └→ Background task starts:                        │
-│       ├→ Check ComfyUI health                       │
-│       ├→ Load + configure workflow JSON             │
-│       ├→ POST to ComfyUI /prompt                    │
-│       ├→ Poll /history until complete               │
-│       └→ Download image from /view                  │
-└─────────────────────────────────────────────────────┘
-↓
-┌─────────────────────────────────────────────────────┐
-│                  DELIVERY LAYER                     │
-│                                                     │
-│   FastAPI uploads image to Slack (3-step API)       │
-│   FastAPI POSTs callback to n8n webhook             │
-│   n8n posts metadata message to Slack               │
-└─────────────────────────────────────────────────────┘
-
+```mermaid
+flowchart TD
+    A[HTTP POST prompt] --> B[n8n Webhook Trigger]
+    B --> C[n8n HTTP Request]
+    C --> D[FastAPI /generate]
+    D --> E[Return job_id immediately]
+    D --> F[Background Task]
+    F --> G{ComfyUI Health Check}
+    G -->|healthy| H[Load workflow JSON]
+    G -->|unreachable| I[Send error callback]
+    H --> J[Inject prompt + seed]
+    J --> K[POST to ComfyUI /prompt]
+    K --> L[Poll /history until done]
+    L --> M[Download image from /view]
+    M --> N[Upload image to Slack]
+    M --> O[POST callback to n8n]
+    O --> P[n8n posts metadata to Slack]
+    N --> Q[Image appears in Slack]
+    P --> Q
+```
 ## Stack
 
 | Component | Role                                                        |
@@ -57,6 +47,30 @@ step after the initial trigger.
 | ComfyUI   | Image generation — Stable Diffusion via REST API            |
 | Slack     | Delivery — image upload and metadata message                |
 | Pydantic  | Request validation — rejects malformed inputs automatically |
+
+## Python files
+
+| File | Purpose |
+|------|---------|
+| `api.py` | FastAPI service — main pipeline controller |
+| `comfy_client.py` | Standalone ComfyUI API client |
+| `pipeline.py` | Batch generation with prompt variations |
+| `prompt_variations.py` | Style, seed, and subject variation strategies |
+| `image_processor.py` | Post-processing, enhancement, metadata |
+| `reliability_test.py` | 10-run consecutive test suite |
+| `workflow_api.json` | ComfyUI workflow in API format |
+
+## Error handling
+
+Two layers:
+
+**Service level (FastAPI):** Each stage of the pipeline has its own 
+try/except — ComfyUI health check, workflow submission, generation 
+timeout, image download. Any failure sends a typed error payload back 
+to n8n via callback instead of crashing silently.
+
+**Workflow level (n8n):** Error Workflow assigned — sends a Slack 
+alert on hard crash. The pipeline never dies without notification.
 
 ## Key Technical Decisions
 
@@ -127,3 +141,9 @@ are the baseline for any real integration work.
 6. Import n8n workflows from the `n8n-workflows` repo
 7. Activate Workflow 5 in n8n
 8. Test: POST to `http://localhost:5678/webhook/generate-image`
+
+## Screenshots
+
+![Workflow canvas](../screenshots/workflow-5-canvas.png)
+![Slack output](../screenshots/workflow-5-slack-output.png)
+![Terminal output](../screenshots/workflow-5-terminal.png)
