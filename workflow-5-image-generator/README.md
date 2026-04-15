@@ -1,4 +1,4 @@
-# Case Study: Automated Image Generation Pipeline
+# Workflow 5 - Image Generator
 
 ## Overview
 
@@ -18,26 +18,35 @@ step after the initial trigger.
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    A[HTTP POST prompt] --> B[n8n Webhook Trigger]
-    B --> C[n8n HTTP Request]
-    C --> D[FastAPI /generate]
-    D --> E[Return job_id immediately]
-    D --> F[Background Task]
-    F --> G{ComfyUI Health Check}
-    G -->|healthy| H[Load workflow JSON]
-    G -->|unreachable| I[Send error callback]
-    H --> J[Inject prompt + seed]
-    J --> K[POST to ComfyUI /prompt]
-    K --> L[Poll /history until done]
-    L --> M[Download image from /view]
-    M --> N[Upload image to Slack]
-    M --> O[POST callback to n8n]
-    O --> P[n8n posts metadata to Slack]
-    N --> Q[Image appears in Slack]
-    P --> Q
-```
+**Trigger**
+HTTP POST → n8n Webhook → FastAPI `/generate`
+
+**Generation** *(runs in background, non-blocking)*
+FastAPI → ComfyUI API → image generated → image downloaded locally
+
+**Delivery**
+FastAPI → Slack (image upload)
+FastAPI → n8n callback webhook → Slack (metadata message)
+
+---
+
+**Full flow:**
+
+HTTP POST (prompt)
+↓
+n8n Webhook
+↓
+FastAPI /generate  ──────────────────────────────→  job_id returned immediately
+↓ (background)
+ComfyUI generates image
+↓
+FastAPI downloads image
+↓
+├──→ Slack (image uploaded directly)
+└──→ n8n callback webhook
+↓
+Slack (metadata message)
+
 ## Stack
 
 | Component | Role                                                        |
