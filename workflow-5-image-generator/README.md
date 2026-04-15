@@ -19,33 +19,19 @@ step after the initial trigger.
 ## Architecture
 
 **Trigger**
-HTTP POST → n8n Webhook → FastAPI `/generate`
+An HTTP POST request with a prompt hits the n8n webhook, which 
+forwards it to the FastAPI service.
 
-**Generation** *(runs in background, non-blocking)*
-FastAPI → ComfyUI API → image generated → image downloaded locally
+**Generation**
+FastAPI returns a job ID immediately and starts generation in the 
+background. It loads the ComfyUI workflow, injects the prompt, 
+submits it to the ComfyUI API, and polls until the image is ready. 
+The image is then downloaded locally.
 
 **Delivery**
-FastAPI → Slack (image upload)
-FastAPI → n8n callback webhook → Slack (metadata message)
-
----
-
-**Full flow:**
-
-HTTP POST (prompt)
-↓
-n8n Webhook
-↓
-FastAPI /generate  ──────────────────────────────→  job_id returned immediately
-↓ (background)
-ComfyUI generates image
-↓
-FastAPI downloads image
-↓
-├──→ Slack (image uploaded directly)
-└──→ n8n callback webhook
-↓
-Slack (metadata message)
+FastAPI uploads the image directly to Slack using the Files API. 
+It then posts a callback to n8n with the job metadata, and n8n 
+forwards a notification message to Slack.
 
 ## Stack
 
